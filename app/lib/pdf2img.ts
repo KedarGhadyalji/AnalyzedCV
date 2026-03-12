@@ -1,3 +1,5 @@
+// app/lib/pdf2img.ts
+
 export interface PdfConversionResult {
   imageUrl: string;
   file: File | null;
@@ -5,22 +7,29 @@ export interface PdfConversionResult {
 }
 
 let pdfjsLib: any = null;
-let isLoading = false;
 let loadPromise: Promise<any> | null = null;
 
 async function loadPdfJs(): Promise<any> {
   if (pdfjsLib) return pdfjsLib;
   if (loadPromise) return loadPromise;
 
-  isLoading = true;
-  // @ts-expect-error - pdfjs-dist/build/pdf.mjs is not a module
-  loadPromise = import("pdfjs-dist/build/pdf.mjs").then((lib) => {
-    // Set the worker source to use local file
-    lib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-    pdfjsLib = lib;
-    isLoading = false;
-    return lib;
-  });
+  loadPromise = (async () => {
+    try {
+      // Import the main library from the package
+      const lib = await import("pdfjs-dist");
+
+      // Point the worker to the file you just copied to the public folder
+      // The leading slash ensures it looks at the root domain
+      lib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
+      pdfjsLib = lib;
+      return lib;
+    } catch (error) {
+      loadPromise = null; // Reset so we can try again if it fails
+      console.error("Failed to load PDF.js:", error);
+      throw error;
+    }
+  })();
 
   return loadPromise;
 }
@@ -32,9 +41,14 @@ export async function convertPdfToImage(
     const lib = await loadPdfJs();
 
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
+    // Loading the document using the binary data
+    const loadingTask = lib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+
+    // Get the first page
     const page = await pdf.getPage(1);
 
+    // Scale 4 provides a high-quality image for ATS scanning/preview
     const viewport = page.getViewport({ scale: 4 });
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
@@ -72,14 +86,15 @@ export async function convertPdfToImage(
           }
         },
         "image/png",
-        1.0,
-      ); // Set quality to maximum (1.0)
+        1.0, // Maximum quality
+      );
     });
   } catch (err) {
+    console.error("PDF Conversion Error:", err);
     return {
       imageUrl: "",
       file: null,
-      error: `Failed to convert PDF: ${err}`,
+      error: `Failed to convert PDF: ${err instanceof Error ? err.message : err}`,
     };
   }
 }

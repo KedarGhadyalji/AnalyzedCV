@@ -90,7 +90,7 @@ export const resumes: Resume[] = [
     },
   },
   {
-    id: "3",
+    id: "4",
     companyName: "Google",
     jobTitle: "Frontend Developer",
     imagePath: "/images/resume_01.png",
@@ -182,67 +182,55 @@ export const resumes: Resume[] = [
 ];
 
 export const AIResponseFormat = `
-      interface Feedback {
-      overallScore: number; //max 100
-      ATS: {
-        score: number; //rate based on ATS suitability
-        tips: {
-          type: "good" | "improve";
-          tip: string; //give 3-4 tips
-        }[];
-      };
-      toneAndStyle: {
-        score: number; //max 100
-        tips: {
-          type: "good" | "improve";
-          tip: string; //make it a short "title" for the actual explanation
-          explanation: string; //explain in detail here
-        }[]; //give 3-4 tips
-      };
-      content: {
-        score: number; //max 100
-        tips: {
-          type: "good" | "improve";
-          tip: string; //make it a short "title" for the actual explanation
-          explanation: string; //explain in detail here
-        }[]; //give 3-4 tips
-      };
-      structure: {
-        score: number; //max 100
-        tips: {
-          type: "good" | "improve";
-          tip: string; //make it a short "title" for the actual explanation
-          explanation: string; //explain in detail here
-        }[]; //give 3-4 tips
-      };
-      skills: {
-        score: number; //max 100
-        tips: {
-          type: "good" | "improve";
-          tip: string; //make it a short "title" for the actual explanation
-          explanation: string; //explain in detail here
-        }[]; //give 3-4 tips
-      };
-    }`;
+{
+  "overallScore": number,
+  "ATS": {
+    "score": number,
+    "tips": [{ "type": "good" | "improve", "tip": "string" }]
+  },
+  "toneAndStyle": {
+    "score": number,
+    "tips": [{ "type": "good" | "improve", "tip": "string", "explanation": "string" }]
+  },
+  "content": {
+    "score": number,
+    "tips": [{ "type": "good" | "improve", "tip": "string", "explanation": "string" }]
+  },
+  "structure": {
+    "score": number,
+    "tips": [{ "type": "good" | "improve", "tip": "string", "explanation": "string" }]
+  },
+  "skills": {
+    "score": number,
+    "tips": [{ "type": "good" | "improve", "tip": "string", "explanation": "string" }]
+  }
+}`;
 
 export const prepareInstructions = ({
   jobTitle,
   jobDescription,
-  AIResponseFormat,
 }: {
   jobTitle: string;
   jobDescription: string;
-  AIResponseFormat: string;
 }) =>
-  `You are an expert in ATS (Applicant Tracking System) and resume analysis.
-  Please analyze and rate this resume and suggest how to improve it.
-  The rating can be low if the resume is bad.
-  Be thorough and detailed. Don't be afraid to point out any mistakes or areas for improvement.
-  If there is a lot to improve, don't hesitate to give low scores. This is to help the user to improve their resume.
-  If available, use the job description for the job user is applying to to give more detailed feedback.
-  If provided, take the job description into consideration.
-  The job title is: ${jobTitle}
-  The job description is: ${jobDescription}
-  Provide the feedback using the following format: ${AIResponseFormat}
-  Return the analysis as a JSON object, without any other text and without the backticks.
-  Do not include any other text or comments.`;
+  `Act as a cynical, high-level technical recruiter and ATS specialist. 
+  
+  TASK:
+  Analyze the provided resume against the following job:
+  - Job Title: ${jobTitle}
+  - Job Description: ${jobDescription}
+
+  CRITICAL RULES:
+  1. DO NOT be nice. If the resume is missing keywords or has poor formatting, give it a failing score (below 50).
+  2. The output MUST be a single, valid JSON object. 
+  3. DO NOT include introductory text like "Sure, here is the analysis."
+  4. DO NOT use markdown code blocks (no \`\`\`json).
+  5. Respond ONLY with the raw JSON string starting with { and ending with }.
+
+  JSON SCHEMA TO FOLLOW:
+  ${AIResponseFormat}
+
+  DIVERSITY IN FEEDBACK:
+  - Provide 3-4 distinct tips per category.
+  - Category scores must reflect the actual quality relative to the specific Job Description provided.
+  - If the resume is completely irrelevant to the job, the overallScore should be extremely low.`;

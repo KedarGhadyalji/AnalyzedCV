@@ -14,6 +14,27 @@ const Upload = () => {
   const [statusText, setStatusText] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
+  const extractJSON = (text: string) => {
+    try {
+      // 1. Try to find content between triple backticks if they exist
+      const match =
+        text.match(/```json\s*([\s\S]*?)\s*```/) ||
+        text.match(/```\s*([\s\S]*?)\s*```/);
+      const cleanText = match ? match[1] : text;
+
+      // 2. Find the first '{' and last '}' to strip any leading/trailing AI chatter
+      const start = cleanText.indexOf("{");
+      const end = cleanText.lastIndexOf("}");
+
+      if (start === -1 || end === -1) throw new Error("No JSON object found");
+
+      return JSON.parse(cleanText.substring(start, end + 1));
+    } catch (e) {
+      console.error("Extraction failed:", e);
+      return null;
+    }
+  };
+
   const handleFileSelect = (file: File | null) => {
     setFile(file);
   };
@@ -49,7 +70,7 @@ const Upload = () => {
     const data = {
       id: uuid,
       resumePath: uploadedFile.path,
-      imagePath: uploadedImage.path,
+      imagePath: uploadedImage.path, // This is now a working public URL
       companyName,
       jobTitle,
       jobDescription,
@@ -70,7 +91,13 @@ const Upload = () => {
         ? feedback.message.content
         : feedback.message.content[0].text;
 
-    data.feedback = JSON.parse(feedbackText);
+    const parsedFeedback = extractJSON(feedbackText);
+
+    if (!parsedFeedback) {
+      return setStatusText("Error: AI response was not in a valid format");
+    }
+    data.feedback = parsedFeedback;
+
     await kv.set(`resume:${uuid}`, JSON.stringify(data));
     setStatusText("Analysis complete, redirecting...");
     console.log(data);
