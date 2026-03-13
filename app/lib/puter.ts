@@ -1,3 +1,4 @@
+// app/lib/puter.ts
 import { create } from "zustand";
 
 declare global {
@@ -18,6 +19,8 @@ declare global {
         upload: (file: File[] | Blob[]) => Promise<FSItem>;
         delete: (path: string) => Promise<void>;
         readdir: (path: string) => Promise<FSItem[] | undefined>;
+        // Added the native get_content_url method
+        get_content_url: (path: string) => Promise<string>;
       };
       ai: {
         chat: (
@@ -64,6 +67,8 @@ interface PuterStore {
     upload: (file: File[] | Blob[]) => Promise<FSItem | undefined>;
     delete: (path: string) => Promise<void>;
     readDir: (path: string) => Promise<FSItem[] | undefined>;
+    // Added getContentUrl to the Store interface
+    getContentUrl: (path: string) => Promise<string | null | undefined>;
   };
   ai: {
     chat: (
@@ -310,6 +315,21 @@ export const usePuterStore = create<PuterStore>((set, get) => {
     return puter.fs.delete(path);
   };
 
+  // The new function implementation
+  const getContentUrl = async (path: string) => {
+    const puter = getPuter();
+    if (!puter) {
+      setError("Puter.js not available");
+      return null;
+    }
+    try {
+      return await puter.fs.get_content_url(path);
+    } catch (err) {
+      console.error("Failed to get signed URL:", err);
+      return null;
+    }
+  };
+
   const chat = async (
     prompt: string | ChatMessage[],
     imageURL?: string | PuterChatOptions,
@@ -431,6 +451,8 @@ export const usePuterStore = create<PuterStore>((set, get) => {
       readDir: (path: string) => readDir(path),
       upload: (files: File[] | Blob[]) => upload(files),
       delete: (path: string) => deleteFile(path),
+      // Exported to the store object
+      getContentUrl: (path: string) => getContentUrl(path),
     },
     ai: {
       chat: (
