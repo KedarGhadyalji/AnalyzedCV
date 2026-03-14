@@ -14,9 +14,8 @@ const AccordionContext = createContext<AccordionContextType | undefined>(
 
 const useAccordion = () => {
   const context = useContext(AccordionContext);
-  if (!context) {
+  if (!context)
     throw new Error("Accordion components must be used within an Accordion");
-  }
   return context;
 };
 
@@ -55,7 +54,8 @@ export const Accordion: React.FC<AccordionProps> = ({
     <AccordionContext.Provider
       value={{ activeItems, toggleItem, isItemActive }}
     >
-      <div className={`space-y-2 ${className}`}>{children}</div>
+      {/* Clean vertical spacing between items */}
+      <div className={cn("space-y-3", className)}>{children}</div>
     </AccordionContext.Provider>
   );
 };
@@ -71,8 +71,19 @@ export const AccordionItem: React.FC<AccordionItemProps> = ({
   children,
   className = "",
 }) => {
+  const { isItemActive } = useAccordion();
+  const isActive = isItemActive(id);
+
   return (
-    <div className={`overflow-hidden border-b border-gray-200 ${className}`}>
+    <div
+      className={cn(
+        "rounded-[20px] transition-all duration-300 border",
+        isActive
+          ? "bg-white border-indigo-100 shadow-sm"
+          : "bg-transparent border-slate-200/60 hover:border-slate-300",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -97,41 +108,47 @@ export const AccordionHeader: React.FC<AccordionHeaderProps> = ({
   const isActive = isItemActive(itemId);
 
   const defaultIcon = (
-    <svg
-      className={cn("w-5 h-5 transition-transform duration-200", {
-        "rotate-180": isActive,
-      })}
-      fill="none"
-      stroke="#98A2B3"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
+    <div
+      className={cn(
+        "w-6 h-6 flex items-center justify-center transition-transform duration-300",
+        isActive ? "rotate-180 text-indigo-600" : "text-slate-400",
+      )}
     >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M19 9l-7 7-7-7"
-      />
-    </svg>
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2.5}
+          d="M19 9l-7 7-7-7"
+        />
+      </svg>
+    </div>
   );
-
-  const handleClick = () => {
-    toggleItem(itemId);
-  };
 
   return (
     <button
-      onClick={handleClick}
-      className={`
-        w-full px-4 py-3 text-left
-        focus:outline-none
-        transition-colors duration-200 flex items-center justify-between cursor-pointer
-        ${className}
-      `}
+      onClick={() => toggleItem(itemId)}
+      className={cn(
+        "w-full px-6 py-4 text-left focus:outline-none flex items-center justify-between cursor-pointer group",
+        className,
+      )}
     >
       <div className="flex items-center space-x-3">
         {iconPosition === "left" && (icon || defaultIcon)}
-        <div className="flex-1">{children}</div>
+        {/* Bold, clean Slate-900 typography */}
+        <div
+          className={cn(
+            "text-lg font-black tracking-tighter transition-colors duration-200",
+            isActive ? "text-indigo-600" : "text-slate-900",
+          )}
+        >
+          {children}
+        </div>
       </div>
       {iconPosition === "right" && (icon || defaultIcon)}
     </button>
@@ -154,13 +171,20 @@ export const AccordionContent: React.FC<AccordionContentProps> = ({
 
   return (
     <div
-      className={`
-        overflow-hidden transition-all duration-300 ease-in-out
-        ${isActive ? "max-h-fit opacity-100" : "max-h-0 opacity-0"}
-        ${className}
-      `}
+      className={cn(
+        "overflow-hidden transition-all duration-300 ease-in-out",
+        isActive ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0",
+      )}
     >
-      <div className="px-4 py-3 ">{children}</div>
+      {/* High-quality legible text for the content body */}
+      <div
+        className={cn(
+          "px-6 pb-6 pt-0 text-slate-600 font-medium leading-relaxed",
+          className,
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 };
