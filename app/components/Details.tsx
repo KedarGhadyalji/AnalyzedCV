@@ -6,39 +6,33 @@ import {
   AccordionItem,
 } from "./Accordion";
 
+// 1. Clean, High-Contrast Score Badge
 const ScoreBadge = ({ score }: { score: number }) => {
+  const isHigh = score > 69;
+  const isMid = score > 39;
+
   return (
     <div
       className={cn(
-        "flex flex-row gap-1 items-center px-2 py-0.5 rounded-[96px]",
-        score > 69
-          ? "bg-badge-green"
-          : score > 39
-            ? "bg-badge-yellow"
-            : "bg-badge-red",
+        "flex flex-row gap-2 items-center px-3 py-1 rounded-full border",
+        isHigh
+          ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+          : isMid
+            ? "bg-amber-50 border-amber-100 text-amber-700"
+            : "bg-rose-50 border-rose-100 text-rose-700",
       )}
     >
       <img
-        src={score > 69 ? "/icons/check.svg" : "/icons/warning.svg"}
-        alt="score"
-        className="size-4"
+        src={isHigh ? "/icons/check.svg" : "/icons/warning.svg"}
+        alt="score status"
+        className="size-3.5"
       />
-      <p
-        className={cn(
-          "text-sm font-medium",
-          score > 69
-            ? "text-badge-green-text"
-            : score > 39
-              ? "text-badge-yellow-text"
-              : "text-badge-red-text",
-        )}
-      >
-        {score}/100
-      </p>
+      <p className="text-xs font-black tracking-tight">{score}/100</p>
     </div>
   );
 };
 
+// 2. Bold Slate-900 Category Header
 const CategoryHeader = ({
   title,
   categoryScore,
@@ -47,58 +41,68 @@ const CategoryHeader = ({
   categoryScore: number;
 }) => {
   return (
-    <div className="flex flex-row gap-4 items-center py-2">
-      <p className="text-2xl font-semibold">{title}</p>
+    <div className="flex flex-row justify-between items-center w-full pr-4">
+      <p className="text-xl font-bold text-slate-700 tracking-tighter">
+        {title}
+      </p>
       <ScoreBadge score={categoryScore} />
     </div>
   );
 };
 
+// 3. Refined Feedback Cards
 const CategoryContent = ({
   tips,
 }: {
   tips: { type: "good" | "improve"; tip: string; explanation: string }[];
 }) => {
   return (
-    <div className="flex flex-col gap-4 items-center w-full">
-      <div className="bg-gray-50 w-full rounded-lg px-5 py-4 grid grid-cols-2 gap-4">
+    <div className="flex flex-col gap-6 w-full mt-2">
+      {/* Overview Grid: Clean Slate-50 background */}
+      <div className="bg-slate-50 border border-slate-100 w-full rounded-2xl px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-4">
         {tips.map((tip, index) => (
-          <div className="flex flex-row gap-2 items-center" key={index}>
+          <div className="flex flex-row gap-3 items-center" key={index}>
             <img
               src={
                 tip.type === "good" ? "/icons/check.svg" : "/icons/warning.svg"
               }
-              alt="score"
-              className="size-5"
+              alt="status icon"
+              className="size-4"
             />
-            <p className="text-xl text-gray-500 ">{tip.tip}</p>
+            <p className="text-sm font-bold text-slate-600 truncate">
+              {tip.tip}
+            </p>
           </div>
         ))}
       </div>
+
+      {/* Deep Dive: Professional Tinted Cards */}
       <div className="flex flex-col gap-4 w-full">
         {tips.map((tip, index) => (
           <div
             key={index + tip.tip}
             className={cn(
-              "flex flex-col gap-2 rounded-2xl p-4",
+              "flex flex-col gap-3 rounded-3xl p-6 border transition-colors",
               tip.type === "good"
-                ? "bg-green-50 border border-green-200 text-green-700"
-                : "bg-yellow-50 border border-yellow-200 text-yellow-700",
+                ? "bg-emerald-50/40 border-emerald-100 text-emerald-900"
+                : "bg-amber-50/40 border-amber-100 text-amber-900",
             )}
           >
-            <div className="flex flex-row gap-2 items-center">
+            <div className="flex flex-row gap-3 items-center">
               <img
                 src={
                   tip.type === "good"
                     ? "/icons/check.svg"
                     : "/icons/warning.svg"
                 }
-                alt="score"
-                className="size-5"
+                alt="status icon"
+                className="size-6"
               />
-              <p className="text-xl font-semibold">{tip.tip}</p>
+              <p className="text-lg font-black tracking-tight">{tip.tip}</p>
             </div>
-            <p>{tip.explanation}</p>
+            <p className="text-sm font-medium leading-relaxed text-slate-700/80">
+              {tip.explanation}
+            </p>
           </div>
         ))}
       </div>
@@ -106,54 +110,31 @@ const CategoryContent = ({
   );
 };
 
-const Details = ({ feedback }: { feedback: Feedback }) => {
+const Details = ({ feedback }: { feedback: any }) => {
+  // Mapping the data for cleaner iteration
+  const categories = [
+    { id: "tone-style", title: "Tone & Style", data: feedback.toneAndStyle },
+    { id: "content", title: "Content Analysis", data: feedback.content },
+    { id: "structure", title: "Structure & Layout", data: feedback.structure },
+    { id: "skills", title: "Skill Alignment", data: feedback.skills },
+  ];
+
   return (
-    <div className="flex flex-col gap-4 w-full">
-      <Accordion>
-        <AccordionItem id="tone-style">
-          <AccordionHeader itemId="tone-style">
-            <CategoryHeader
-              title="Tone & Style"
-              categoryScore={feedback.toneAndStyle.score}
-            />
-          </AccordionHeader>
-          <AccordionContent itemId="tone-style">
-            <CategoryContent tips={feedback.toneAndStyle.tips} />
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem id="content">
-          <AccordionHeader itemId="content">
-            <CategoryHeader
-              title="Content"
-              categoryScore={feedback.content.score}
-            />
-          </AccordionHeader>
-          <AccordionContent itemId="content">
-            <CategoryContent tips={feedback.content.tips} />
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem id="structure">
-          <AccordionHeader itemId="structure">
-            <CategoryHeader
-              title="Structure"
-              categoryScore={feedback.structure.score}
-            />
-          </AccordionHeader>
-          <AccordionContent itemId="structure">
-            <CategoryContent tips={feedback.structure.tips} />
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem id="skills">
-          <AccordionHeader itemId="skills">
-            <CategoryHeader
-              title="Skills"
-              categoryScore={feedback.skills.score}
-            />
-          </AccordionHeader>
-          <AccordionContent itemId="skills">
-            <CategoryContent tips={feedback.skills.tips} />
-          </AccordionContent>
-        </AccordionItem>
+    <div className="flex flex-col gap-4 w-full animate-in fade-in duration-700">
+      <Accordion allowMultiple>
+        {categories.map((cat) => (
+          <AccordionItem id={cat.id} key={cat.id}>
+            <AccordionHeader itemId={cat.id}>
+              <CategoryHeader
+                title={cat.title}
+                categoryScore={cat.data.score}
+              />
+            </AccordionHeader>
+            <AccordionContent itemId={cat.id}>
+              <CategoryContent tips={cat.data.tips} />
+            </AccordionContent>
+          </AccordionItem>
+        ))}
       </Accordion>
     </div>
   );

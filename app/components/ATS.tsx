@@ -1,4 +1,5 @@
 import React from "react";
+import { cn } from "~/lib/utils";
 
 interface Suggestion {
   type: "good" | "improve";
@@ -11,78 +12,127 @@ interface ATSProps {
 }
 
 const ATS: React.FC<ATSProps> = ({ score, suggestions }) => {
-  // Determine background gradient based on score
-  const gradientClass =
-    score > 69
-      ? "from-green-100"
-      : score > 49
-        ? "from-yellow-100"
-        : "from-red-100";
+  // Quartz Logic: Professional contrast and status mapping
+  const isHigh = score > 69;
+  const isMid = score > 49;
 
-  // Determine icon based on score
-  const iconSrc =
-    score > 69
-      ? "/icons/ats-good.svg"
-      : score > 49
-        ? "/icons/ats-warning.svg"
-        : "/icons/ats-bad.svg";
+  const scoreColor = isHigh
+    ? "text-emerald-600"
+    : isMid
+      ? "text-amber-600"
+      : "text-rose-600";
 
-  // Determine subtitle based on score
-  const subtitle =
-    score > 69 ? "Great Job!" : score > 49 ? "Good Start" : "Needs Improvement";
+  const subtitle = isHigh
+    ? "Great Job!"
+    : isMid
+      ? "Good Start"
+      : "Needs Improvement";
 
   return (
-    <div
-      className={`bg-linear-to-b ${gradientClass} to-white rounded-2xl shadow-md w-full p-6`}
-    >
-      {/* Top section with icon and headline */}
-      <div className="flex items-center gap-4 mb-6">
-        <img src={iconSrc} alt="ATS Score Icon" className="w-12 h-12" />
-        <div>
-          <h2 className="text-2xl font-bold">ATS Score - {score}/100</h2>
+    <div className="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden">
+      {/* Top section: High-contrast header */}
+      <div className="p-8 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tighter">
+            ATS Score{" "}
+            <span className={cn("ml-1", scoreColor)}>{score}/100</span>
+          </h2>
+          <h3 className="text-xl font-bold text-slate-700 tracking-tight">
+            {subtitle}
+          </h3>
+        </div>
+
+        {/* Simple Progress visualization */}
+        <div className="w-full md:w-48 h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className={cn(
+              "h-full transition-all duration-1000 ease-out",
+              isHigh
+                ? "bg-emerald-500"
+                : isMid
+                  ? "bg-amber-500"
+                  : "bg-rose-500",
+            )}
+            style={{ width: `${score}%` }}
+          />
         </div>
       </div>
 
-      {/* Description section */}
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold mb-2">{subtitle}</h3>
-        <p className="text-gray-600 mb-4">
-          This score represents how well your resume is likely to perform in
-          Applicant Tracking Systems used by employers.
-        </p>
+      <div className="p-8 pt-0">
+        {/* Description Section */}
+        <div className="mb-8">
+          <p className="text-slate-500 font-medium leading-relaxed max-w-2xl">
+            This score represents how well your resume is likely to perform in
+            Applicant Tracking Systems used by employers.
+          </p>
+        </div>
 
-        {/* Suggestions list */}
-        <div className="space-y-3">
-          {suggestions.map((suggestion, index) => (
-            <div key={index} className="flex items-start gap-3">
-              <img
-                src={
-                  suggestion.type === "good"
-                    ? "/icons/check.svg"
-                    : "/icons/warning.svg"
-                }
-                alt={suggestion.type === "good" ? "Check" : "Warning"}
-                className="w-5 h-5 mt-1"
-              />
-              <p
-                className={
-                  suggestion.type === "good"
-                    ? "text-green-700"
-                    : "text-amber-700"
-                }
+        {/* Suggestions list: Professional Card Layout */}
+        <div className="grid grid-cols-1 gap-3">
+          {suggestions.map((suggestion, index) => {
+            const isGood = suggestion.type === "good";
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "flex items-start gap-4 p-5 rounded-2xl border transition-colors",
+                  isGood
+                    ? "bg-emerald-50/40 border-emerald-100/50"
+                    : "bg-amber-50/40 border-amber-100/50",
+                )}
               >
-                {suggestion.tip}
-              </p>
-            </div>
-          ))}
+                <div
+                  className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5",
+                    isGood
+                      ? "bg-emerald-500 text-white"
+                      : "bg-amber-500 text-white",
+                  )}
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    {isGood ? (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
+                    ) : (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    )}
+                  </svg>
+                </div>
+                <p
+                  className={cn(
+                    "font-bold text-sm leading-snug",
+                    isGood ? "text-emerald-900" : "text-amber-900",
+                  )}
+                >
+                  {suggestion.tip}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Closing encouragement */}
+        <div className="mt-8 pt-6 border-t border-slate-50">
+          <p className="text-slate-400 font-medium italic text-sm">
+            Keep refining your resume to improve your chances of getting past
+            ATS filters and into the hands of recruiters.
+          </p>
         </div>
       </div>
-
-      {/* Closing encouragement */}
-      <p className="text-gray-700 italic">
-        Keep refining your resume to improve your chances of getting past ATS
-        filters and into the hands of recruiters.
-      </p>
     </div>
   );
 };
