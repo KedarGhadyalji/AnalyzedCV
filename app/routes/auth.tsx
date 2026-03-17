@@ -18,30 +18,45 @@ const Auth = () => {
   }, [auth.isAuthenticated, next]);
 
   return (
-    <main className="bg-[url('/images/bg-auth.svg')] bg-cover min-h-screen flex items-center justify-center">
-      <div className="gradient-border shadow-lg">
-        <section className="flex flex-col gap-8 bg-white rounded-2xl p-10">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1>Welcome</h1>
-            <h2>Log In to Continue Your Job Journey</h2>
+    <main className="bg-quartz-hero min-h-screen flex items-center justify-center p-6">
+      {/* The "Quartz" Login Card */}
+      <div className="w-full max-w-[680px] bg-white/80 backdrop-blur-2xl rounded-[40px] border border-white p-12 shadow-2xl shadow-indigo-500/5">
+        <section className="flex flex-col gap-10">
+          <div className="flex flex-col items-center gap-4 text-center">
+            {/* Logo: Quartz Two-tone branding */}
+            <div className="flex items-center group">
+              <span className="text-4xl brand-first transition-colors group-hover:text-indigo-600">
+                Analyzed
+              </span>
+              <span className="text-4xl brand-second">CV</span>
+            </div>
+
+            {/* Theme Update: Slate-900 and font-bold weight */}
+            <h1 className="text-4xl font-bold text-slate-900 tracking-tighter">
+              Welcome Back
+            </h1>
+
+            <h2 className="text-lg font-bold text-slate-400 tracking-tight">
+              Log in to track your career progress
+            </h2>
           </div>
-          <div>
+
+          <div className="flex justify-center">
             {isLoading ? (
-              <button className="auth-button animate-pulse">
-                <p>Signing you in...</p>
+              <button className="auth-button animate-pulse opacity-70 cursor-not-allowed">
+                <span className="font-bold uppercase tracking-tight">
+                  Signing you in...
+                </span>
               </button>
             ) : (
-              <>
-                {auth.isAuthenticated ? (
-                  <button className="auth-button" onClick={auth.signOut}>
-                    <p>Log Out</p>
-                  </button>
-                ) : (
-                  <button className="auth-button" onClick={auth.signIn}>
-                    <p>Log In</p>
-                  </button>
-                )}
-              </>
+              <button
+                className="auth-button group relative overflow-hidden transition-all"
+                onClick={auth.isAuthenticated ? auth.signOut : auth.signIn}
+              >
+                <span className="font-bold uppercase tracking-tight">
+                  {auth.isAuthenticated ? "Log Out" : "Log In to AnalyzedCV"}
+                </span>
+              </button>
             )}
           </div>
         </section>

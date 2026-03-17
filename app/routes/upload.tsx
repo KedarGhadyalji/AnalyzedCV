@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 import { convertPdfToImage } from "~/lib/pdf2img";
 import { generateUUID } from "~/lib/utils";
 import { prepareInstructions } from "~/constants";
+import { cn } from "~/lib/utils";
 
 const Upload = () => {
   const { auth, isLoading, fs, ai, kv } = usePuterStore();
@@ -16,18 +17,13 @@ const Upload = () => {
 
   const extractJSON = (text: string) => {
     try {
-      // 1. Try to find content between triple backticks if they exist
       const match =
         text.match(/```json\s*([\s\S]*?)\s*```/) ||
         text.match(/```\s*([\s\S]*?)\s*```/);
       const cleanText = match ? match[1] : text;
-
-      // 2. Find the first '{' and last '}' to strip any leading/trailing AI chatter
       const start = cleanText.indexOf("{");
       const end = cleanText.lastIndexOf("}");
-
       if (start === -1 || end === -1) throw new Error("No JSON object found");
-
       return JSON.parse(cleanText.substring(start, end + 1));
     } catch (e) {
       console.error("Extraction failed:", e);
@@ -52,56 +48,61 @@ const Upload = () => {
   }) => {
     setIsProcessing(true);
 
-    setStatusText("Uploading the file...");
-    const uploadedFile = await fs.upload([file]);
-    if (!uploadedFile) return setStatusText("Error: Failed to upload file");
+    try {
+      setStatusText("Uploading original document...");
+      const uploadedFile = await fs.upload([file]);
+      if (!uploadedFile) throw new Error("Failed to upload PDF");
 
-    setStatusText("Converting to image...");
-    const imageFile = await convertPdfToImage(file);
-    if (!imageFile.file)
-      return setStatusText("Error: Failed to convert PDF to image");
+      setStatusText("Generating visual preview...");
+      const imageFile = await convertPdfToImage(file);
+      if (!imageFile.file) throw new Error("Failed to convert PDF to image");
 
-    setStatusText("Uploading the image...");
-    const uploadedImage = await fs.upload([imageFile.file]);
-    if (!uploadedImage) return setStatusText("Error: Failed to upload image");
+      setStatusText("Finalizing preview paths...");
+      const uploadedImage = await fs.upload([imageFile.file]);
+      if (!uploadedImage) throw new Error("Failed to upload preview image");
 
-    setStatusText("Preparing data...");
-    const uuid = generateUUID();
-    const data = {
-      id: uuid,
-      resumePath: uploadedFile.path,
-      imagePath: uploadedImage.path, // This is now a working public URL
-      companyName,
-      jobTitle,
-      jobDescription,
-      feedback: "",
-    };
-    await kv.set(`resume:${uuid}`, JSON.stringify(data));
+      const signedImageUrl = await fs.getContentUrl(uploadedImage.path);
 
-    setStatusText("Analyzing...");
+      setStatusText("Preparing analysis metrics...");
+      const uuid = generateUUID();
+      const data: any = {
+        id: uuid,
+        resumePath: uploadedFile.path,
+        imagePath: signedImageUrl || uploadedImage.path,
+        companyName,
+        jobTitle,
+        jobDescription,
+        feedback: "",
+      };
 
-    const feedback = await ai.feedback(
-      uploadedFile.path,
-      prepareInstructions({ jobTitle, jobDescription }),
-    );
-    if (!feedback) return setStatusText("Error: Failed to analyze resume");
+      await kv.set(`resume:${uuid}`, JSON.stringify(data));
 
-    const feedbackText =
-      typeof feedback.message.content === "string"
-        ? feedback.message.content
-        : feedback.message.content[0].text;
+      setStatusText("Analyzing with Quartz Intelligence...");
+      const feedbackResponse = await ai.feedback(
+        uploadedFile.path,
+        prepareInstructions({ jobTitle, jobDescription }),
+      );
 
-    const parsedFeedback = extractJSON(feedbackText);
+      if (!feedbackResponse) throw new Error("AI Analysis failed");
 
-    if (!parsedFeedback) {
-      return setStatusText("Error: AI response was not in a valid format");
+      const feedbackText =
+        typeof feedbackResponse.message.content === "string"
+          ? feedbackResponse.message.content
+          : (feedbackResponse.message.content as any)[0].text;
+
+      const parsedFeedback = extractJSON(feedbackText);
+      if (!parsedFeedback) throw new Error("Invalid AI JSON format");
+
+      data.feedback = parsedFeedback;
+      await kv.set(`resume:${uuid}`, JSON.stringify(data));
+
+      setStatusText("Success! Redirecting...");
+      navigate(`/resume/${uuid}`);
+    } catch (err: any) {
+      console.error("Quartz Analysis Error:", err);
+      setStatusText(`Error: ${err.message}`);
+      setIsProcessing(false);
     }
-    data.feedback = parsedFeedback;
-
-    await kv.set(`resume:${uuid}`, JSON.stringify(data));
-    setStatusText("Analysis complete, redirecting...");
-    console.log(data);
-    navigate(`/resume/${uuid}`);
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -115,67 +116,106 @@ const Upload = () => {
     const jobDescription = formData.get("job-description") as string;
 
     if (!file) return;
-
     handleAnalyze({ companyName, jobTitle, jobDescription, file });
   };
 
   return (
-    <main className="bg-[url('/images/bg-main.svg')] bg-cover">
+    <main className="bg-quartz-hero min-h-screen relative overflow-hidden">
       <Navbar />
 
-      <section className="main-section">
+      <section className="main-section pb-20">
         <div className="page-heading py-16">
-          <h1>Smart feedback for your dream job</h1>
+          <h1 className="text-5xl font-bold text-slate-900 tracking-tighter leading-tight">
+            Analyze Resume against Job Description
+          </h1>
+
           {isProcessing ? (
-            <>
-              <h2>{statusText}</h2>
-              <img src="/images/resume-scan.gif" className="w-full" />
-            </>
+            <div className="flex flex-col items-center gap-6 mt-10">
+              <h2 className="text-xl font-bold text-indigo-600 tracking-tight animate-pulse">
+                {statusText}
+              </h2>
+              <div className="w-full max-w-xl rounded-4xl overflow-hidden border-4 border-white shadow-2xl">
+                <img src="/images/resume-scan.gif" className="w-full" />
+              </div>
+            </div>
           ) : (
-            <h2>Drop your resume for an ATS score and improvement tips</h2>
+            <h2 className="text-xl font-bold text-slate-400 tracking-tight">
+              Submit your details to generate professional feedback and ATS
+              optimization tips.
+            </h2>
           )}
+
           {!isProcessing && (
             <form
               id="upload-form"
               onSubmit={handleSubmit}
-              className="flex flex-col gap-4 mt-8"
+              className="flex flex-col gap-6 mt-12 bg-white/40 backdrop-blur-xl p-8 rounded-[40px] border border-white shadow-xl"
             >
-              <div className="form-div">
-                <label htmlFor="company-name">Company Name</label>
-                <input
-                  type="text"
-                  name="company-name"
-                  placeholder="Company Name"
-                  id="company-name"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="form-div">
+                  <label
+                    htmlFor="company-name"
+                    className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1"
+                  >
+                    Company Name
+                  </label>
+                  <input
+                    type="text"
+                    name="company-name"
+                    placeholder="e.g. Google"
+                    id="company-name"
+                    className="w-full bg-white border-slate-100 rounded-2xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 transition-all"
+                  />
+                </div>
+                <div className="form-div">
+                  <label
+                    htmlFor="job-title"
+                    className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1"
+                  >
+                    Job Title
+                  </label>
+                  <input
+                    type="text"
+                    name="job-title"
+                    placeholder="e.g. Software Engineer"
+                    id="job-title"
+                    className="w-full bg-white border-slate-100 rounded-2xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 transition-all"
+                  />
+                </div>
               </div>
+
               <div className="form-div">
-                <label htmlFor="job-title">Job Title</label>
-                <input
-                  type="text"
-                  name="job-title"
-                  placeholder="Job Title"
-                  id="job-title"
-                />
-              </div>
-              <div className="form-div">
-                <label htmlFor="job-description">Job Description</label>
+                <label
+                  htmlFor="job-description"
+                  className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1"
+                >
+                  Job Description
+                </label>
                 <textarea
                   rows={5}
                   name="job-description"
-                  placeholder="Job Description"
+                  placeholder="Paste the requirements here..."
                   id="job-description"
+                  className="w-full bg-white border-slate-100 rounded-2xl p-4 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 transition-all"
                 />
               </div>
 
               <div className="form-div">
-                <label htmlFor="uploader">Upload Resume</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1 mb-2 block">
+                  Upload Resume
+                </label>
                 <FileUploader onFileSelect={handleFileSelect} />
               </div>
 
-              <button className="primary-button" type="submit">
-                Analyze Resume
-              </button>
+              {/* Centered Button Container */}
+              <div className="w-full flex justify-center mt-2">
+                <button
+                  className="primary-button py-4 px-12 text-lg font-black uppercase tracking-widest"
+                  type="submit"
+                >
+                  Analyze Resume
+                </button>
+              </div>
             </form>
           )}
         </div>
@@ -183,4 +223,5 @@ const Upload = () => {
     </main>
   );
 };
+
 export default Upload;
